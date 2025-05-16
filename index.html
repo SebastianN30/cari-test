@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Calculadora de Horas Trabajadas</title>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f0f4f8;
+    margin: 0; padding: 20px;
+  }
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 0 20px rgb(0 0 0 / 0.1);
+  }
+  h2 {
+    text-align: center;
+    color: #0a6cf1;
+  }
+  label {
+    display: block;
+    margin-top: 12px;
+    font-weight: 600;
+  }
+  input[type="time"], input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 6px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+  }
+  .concepts-container {
+    margin-top: 12px;
+  }
+  .concept {
+    background: #e8f0fe;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+  }
+  .btn-send {
+    margin-top: 20px;
+    background-color: #0a6cf1;
+    color: white;
+    border: none;
+    padding: 12px;
+    width: 100%;
+    font-size: 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  .btn-send:hover {
+    background-color: #084ac1;
+  }
+  #resultChart {
+    margin-top: 30px;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h2>Calculadora de Horas Trabajadas</h2>
+    
+    <label>Hora de Entrada</label>
+    <input type="time" id="attendanceIn" value="00:00" />
+    
+    <label>Hora de Salida</label>
+    <input type="time" id="attendanceOut" value="10:30" />
+    
+    <div class="concepts-container">
+      <label>Configuración de Conceptos</label>
+      <div class="concept">
+        <input type="text" class="concept-id" value="HO" placeholder="ID" />
+        <input type="text" class="concept-name" value="HO" placeholder="Nombre" />
+        <input type="time" class="concept-start" value="08:00" /> a
+        <input type="time" class="concept-end" value="17:59" />
+      </div>
+      <div class="concept">
+        <input type="text" class="concept-id" value="HED" placeholder="ID" />
+        <input type="text" class="concept-name" value="HED" placeholder="Nombre" />
+        <input type="time" class="concept-start" value="18:00" /> a
+        <input type="time" class="concept-end" value="20:59" />
+      </div>
+      <div class="concept">
+        <input type="text" class="concept-id" value="HEN" placeholder="ID" />
+        <input type="text" class="concept-name" value="HEN" placeholder="Nombre" />
+        <input type="time" class="concept-start" value="21:00" /> a
+        <input type="time" class="concept-end" value="05:59" />
+      </div>
+    </div>
+    
+    <button class="btn-send" onclick="sendData()">Calcular Horas</button>
+    
+    <canvas id="resultChart" width="400" height="400" style="display:none;"></canvas>
+  </div>
+
+  <script>
+    let chartInstance = null;
+
+    function sendData() {
+      const attendanceIn = $('#attendanceIn').val();
+      const attendanceOut = $('#attendanceOut').val();
+
+      // Leer conceptos del formulario
+      const concepts = [];
+      $('.concept').each(function() {
+        const id = $(this).find('.concept-id').val().trim();
+        const name = $(this).find('.concept-name').val().trim();
+        const start = $(this).find('.concept-start').val();
+        const end = $(this).find('.concept-end').val();
+
+        if (id && name && start && end) {
+          concepts.push({id, name, start, end});
+        }
+      });
+
+      const dataToSend = {
+        attendanceIn,
+        attendanceOut,
+        concepts
+      };
+
+      $.ajax({
+        url: 'https://falconcloud.co/site_srv10_ph/site/api/qserv.php/13465-770721',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(dataToSend),
+        dataType: 'json',
+        success: function(response) {
+          console.log('Respuesta API:', response);
+          renderChart(response);
+        },
+        error: function(xhr, status, error) {
+          alert("Error al calcular las horas: " + error);
+        }
+      });
+    }
+
+    function renderChart(data) {
+      const ctx = document.getElementById('resultChart').getContext('2d');
+      
+      // Convertir datos en arrays para etiquetas y valores
+      const labels = Object.keys(data);
+      const values = Object.values(data);
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Horas Trabajadas',
+            data: values,
+            backgroundColor: [
+              '#0a6cf1',
+              '#f39c12',
+              '#9b59b6'
+            ],
+            hoverOffset: 30
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                font: {
+                  size: 16,
+                  weight: 'bold'
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.label}: ${context.parsed} horas`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      $('#resultChart').show();
+    }
+  </script>
+</body>
+</html>
